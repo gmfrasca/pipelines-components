@@ -7,7 +7,7 @@ from kfp import dsl
 
 @dsl.component(base_image="python:3.10")
 def hello_world(name: str = "World") -> str:
-    """A simple hello world component.
+    """A simple hello world component.  Added a new line to test the README generation.
     
     Args:
         name: The name to greet. Defaults to "World".
