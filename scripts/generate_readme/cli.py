@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from .constants import logger
-from .generator import ReadmeGenerator
+from .writer import ReadmeWriter
 
 
 def validate_component_directory(dir_path: str) -> Path:
@@ -138,13 +138,13 @@ def main():
         logger.error("Error: Cannot specify both --component and --pipeline")
         sys.exit(1)
     
-    # Create and run the generator
-    generator = ReadmeGenerator(
+    # Create and run the README writer
+    writer = ReadmeWriter(
         component_dir=args.component,
         pipeline_dir=args.pipeline,
         output_file=args.output,
         verbose=args.verbose,
         overwrite=args.overwrite
     )
-    generator.generate()
+    writer.generate()
 

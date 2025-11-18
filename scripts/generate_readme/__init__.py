@@ -5,11 +5,11 @@ to extract function metadata and generate comprehensive README documentation fol
 standards outlined in KEP-913: Components Repository.
 """
 
-from .generator import ReadmeGenerator
+from .writer import ReadmeWriter
 from .metadata_parser import ComponentMetadataParser, PipelineMetadataParser
 
 __all__ = [
-    'ReadmeGenerator',
+    'ReadmeWriter',
     'ComponentMetadataParser',
     'PipelineMetadataParser',
 ]
