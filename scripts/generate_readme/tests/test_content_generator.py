@@ -12,38 +12,28 @@ class TestReadmeContentGenerator:
     
     def test_init_with_component(self, component_dir, sample_extracted_metadata):
         """Test initialization with component metadata."""
-        metadata_file = component_dir / "metadata.yaml"
-        
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         assert generator.metadata == sample_extracted_metadata
-        assert generator.is_component is True
         assert generator.yaml_metadata is not None
     
     def test_init_with_pipeline(self, pipeline_dir, sample_extracted_metadata):
         """Test initialization with pipeline metadata."""
-        metadata_file = pipeline_dir / "metadata.yaml"
-        
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=False
+            pipeline_dir
         )
         
-        assert generator.is_component is False
+        assert generator.metadata == sample_extracted_metadata
     
     def test_load_yaml_metadata(self, component_dir, sample_extracted_metadata):
         """Test loading YAML metadata from file."""
-        metadata_file = component_dir / "metadata.yaml"
-        
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         assert 'name' in generator.yaml_metadata
@@ -62,8 +52,7 @@ ci:
         
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            temp_dir
         )
         
         assert 'ci' not in generator.yaml_metadata
@@ -72,11 +61,9 @@ ci:
     
     def test_prepare_template_context(self, component_dir, sample_extracted_metadata):
         """Test template context preparation."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         context = generator._prepare_template_context()
@@ -86,15 +73,16 @@ ci:
         assert 'overview' in context
         assert 'parameters' in context
         assert 'returns' in context
-        assert 'is_component' in context
         assert 'component_name' in context
-        assert 'usage_params' in context
+        assert 'example_code' in context
         assert 'formatted_metadata' in context
         
         # Check title is properly formatted
         assert context['title'] == 'Sample Component'
         assert context['component_name'] == 'sample_component'
-        assert context['is_component'] is True
+        
+        # Check example_code is empty string when no example_pipeline.py exists
+        assert context['example_code'] == ''
         
         # Check formatted metadata exists
         assert isinstance(context['formatted_metadata'], dict)
@@ -102,7 +90,6 @@ ci:
         
     def test_prepare_template_context_custom_overview(self, component_dir):
         """Test template context with custom overview text."""
-        metadata_file = component_dir / "metadata.yaml"
         custom_metadata = {
             'name': 'test_component',
             'overview': 'This is a custom overview text.',
@@ -112,8 +99,7 @@ ci:
         
         generator = ReadmeContentGenerator(
             custom_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         context = generator._prepare_template_context()
@@ -122,11 +108,9 @@ ci:
     
     def test_prepare_template_context_parameters(self, component_dir, sample_extracted_metadata):
         """Test that parameters are properly formatted in context."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         context = generator._prepare_template_context()
@@ -141,47 +125,65 @@ ci:
         assert context['parameters']['input_path']['default_str'] == 'Required'
         assert context['parameters']['num_iterations']['default_str'] == '`10`'
     
-    def test_prepare_usage_params(self, component_dir, sample_extracted_metadata):
-        """Test usage example parameter preparation."""
-        metadata_file = component_dir / "metadata.yaml"
+    def test_load_example_pipeline(self, component_dir, sample_extracted_metadata):
+        """Test loading example_pipeline.py file."""
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
-        usage_params = generator._prepare_usage_params()
+        # When no example_pipeline.py exists, should return empty string
+        example_code = generator._load_example_pipeline()
+        assert example_code == ''
         
-        # Should show required params (input_path, output_path have no defaults)
-        assert 'input_path' in usage_params
-        assert 'output_path' in usage_params
+        # Create an example_pipeline.py file
+        example_file = component_dir / 'example_pipeline.py'
+        example_content = 'from kfp import dsl\n\n@dsl.pipeline()\ndef my_pipeline():\n    pass'
+        example_file.write_text(example_content)
+        
+        # Now it should load the content
+        example_code = generator._load_example_pipeline()
+        assert example_code == example_content
     
     def test_generate_readme_component(self, component_dir, sample_extracted_metadata):
         """Test complete README generation for a component."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         readme = generator.generate_readme()
         
-        # Check all sections are present
+        # Check all sections are present (except Usage Example since no example_pipeline.py exists)
         assert '# Sample Component' in readme
         assert '## Overview' in readme
         assert '## Inputs' in readme
         assert '## Outputs' in readme
-        assert '## Usage Example' in readme
         assert '## Metadata' in readme
+        
+        # Usage Example should NOT be present when example_pipeline.py doesn't exist
+        assert '## Usage Example' not in readme
+        
+        # Now test with example_pipeline.py present
+        example_file = component_dir / 'example_pipeline.py'
+        example_file.write_text('from kfp import dsl\n\n@dsl.pipeline()\ndef test_pipeline():\n    pass')
+        
+        # Regenerate readme
+        generator2 = ReadmeContentGenerator(
+            sample_extracted_metadata,
+            component_dir
+        )
+        readme2 = generator2.generate_readme()
+        
+        # Now Usage Example should be present
+        assert '## Usage Example' in readme2
+        assert 'from kfp import dsl' in readme2
     
     def test_generate_readme_pipeline(self, pipeline_dir, sample_extracted_metadata):
         """Test complete README generation for a pipeline."""
-        metadata_file = pipeline_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=False
+            pipeline_dir
         )
         
         readme = generator.generate_readme()
@@ -210,8 +212,7 @@ ci:
         
         generator = ReadmeContentGenerator(
             minimal_metadata,
-            metadata_file,
-            is_component=True
+            temp_dir
         )
         
         readme = generator.generate_readme()
@@ -220,42 +221,11 @@ ci:
         assert '# Test' in readme
         assert '## Overview' in readme
     
-    def test_usage_example_parameter_types(self, component_dir):
-        """Test that usage examples use correct value types."""
-        metadata_file = component_dir / "metadata.yaml"
-        metadata = {
-            'name': 'test_component',
-            'parameters': {
-                'str_param': {'name': 'str_param', 'type': 'str', 'default': None},
-                'int_param': {'name': 'int_param', 'type': 'int', 'default': None},
-                'bool_param': {'name': 'bool_param', 'type': 'bool', 'default': None},
-                'other_param': {'name': 'other_param', 'type': 'custom', 'default': None},
-            },
-            'overview': 'Test',
-            'returns': {}
-        }
-        
-        generator = ReadmeContentGenerator(
-            metadata,
-            metadata_file,
-            is_component=True
-        )
-        
-        usage_params = generator._prepare_usage_params()
-        
-        # Check type-specific example values
-        assert '"str_param_value"' == usage_params['str_param']  # String should have quotes
-        assert '42' == usage_params['int_param']  # Int should be numeric
-        assert 'True' == usage_params['bool_param']  # Bool should be boolean
-        assert 'other_param_input' == usage_params['other_param']  # Custom type uses generic format
-    
     def test_format_key_snake_case(self, component_dir, sample_extracted_metadata):
         """Test formatting snake_case keys."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         assert generator._format_key('my_field_name') == 'My Field Name'
@@ -264,11 +234,9 @@ ci:
     
     def test_format_key_camel_case(self, component_dir, sample_extracted_metadata):
         """Test formatting camelCase keys."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         assert generator._format_key('myFieldName') == 'My Field Name'
@@ -276,11 +244,9 @@ ci:
     
     def test_format_key_acronyms(self, component_dir, sample_extracted_metadata):
         """Test that known acronyms are kept uppercase."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         assert generator._format_key('kfp_version') == 'KFP Version'
@@ -289,11 +255,9 @@ ci:
     
     def test_format_value_basic_types(self, component_dir, sample_extracted_metadata):
         """Test formatting basic value types."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         assert generator._format_value(True) == 'Yes'
@@ -304,11 +268,9 @@ ci:
     
     def test_format_value_list(self, component_dir, sample_extracted_metadata):
         """Test formatting list values."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         # Single item list - should still use nested list format
@@ -326,11 +288,9 @@ ci:
     
     def test_format_value_dict(self, component_dir, sample_extracted_metadata):
         """Test formatting dict values."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         test_dict = {'key1': 'value1', 'key2': 'value2'}
@@ -342,11 +302,9 @@ ci:
     
     def test_format_metadata(self, component_dir, sample_extracted_metadata):
         """Test complete metadata formatting."""
-        metadata_file = component_dir / "metadata.yaml"
         generator = ReadmeContentGenerator(
             sample_extracted_metadata,
-            metadata_file,
-            is_component=True
+            component_dir
         )
         
         formatted = generator._format_metadata()
