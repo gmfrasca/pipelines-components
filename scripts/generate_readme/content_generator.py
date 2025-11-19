@@ -202,7 +202,8 @@ class ReadmeContentGenerator:
         Returns:
             Dictionary containing all variables needed by the template.
         """
-        component_name = self.metadata.get('name', 'Component')
+        # Prefer name from metadata.yaml over function name
+        component_name = self.feature_metadata.get('name', self.metadata.get('name', 'Component'))
         
         # Prepare title
         title = ' '.join(word.capitalize() for word in component_name.split('_'))
@@ -237,8 +238,14 @@ class ReadmeContentGenerator:
         # Load example pipeline if it exists
         example_code = self._load_example_pipeline()
         
+        # Extract links for separate Additional Resources section (removes from feature_metadata)
+        links = self.feature_metadata.pop('links', {})
+        
         # Prepare formatted metadata for human-readable display
-        formatted_metadata = self._format_metadata() if self.feature_metadata else {}
+        formatted_metadata = {
+            self._format_key(key): self._format_value(value)
+            for key, value in self.feature_metadata.items()
+        }
         
         return {
             'title': title,
@@ -248,5 +255,6 @@ class ReadmeContentGenerator:
             'component_name': component_name,
             'example_code': example_code,
             'formatted_metadata': formatted_metadata,
+            'links': links,
         }
 
