@@ -1,0 +1,21 @@
+tier: core
+name: hello_world
+stability: stable
+dependencies:
+  kubeflow:
+    - name: Pipelines  # Kubeflow Pipelines version is required
+      version: '>=2.5'
+    - name: Trainer  # Other official Kubeflow components required. This is a validated list enforced by CI.
+      version: '>=2.0'
+  external_services:  # A free form of external service dependencies
+    - name: Argo Workflows
+      version: "3.6"
+tags:
+  - hello-world
+lastVerified: 2025-11-13T00:00:00Z
+ci:
+  skip_dependency_probe: false
+  pytest: optional
+links:
+  documentation: https://kubeflow.org/components/hello-world/
+  issue_tracker: https://github.com/kubeflow/pipelines-components/issues
