@@ -201,6 +201,57 @@ def regular_function(param: str):
         decorator = tree.body[0].decorator_list[0]
         
         assert parser._is_component_decorator(decorator) is False
+    
+    def test_extract_decorator_name_component(self, temp_dir):
+        """Test extracting name parameter from @dsl.component decorator."""
+        component_file = temp_dir / "component.py"
+        component_file.write_text("""
+from kfp import dsl
+
+@dsl.component(name='custom-component-name', base_image='python:3.10')
+def my_component(param: str) -> str:
+    '''A component with custom name in decorator.
+    
+    Args:
+        param: Input parameter.
+        
+    Returns:
+        Output value.
+    '''
+    return param
+""")
+        
+        parser = ComponentMetadataParser(component_file)
+        
+        # Test finding the function
+        function_name = parser.find_function()
+        assert function_name == 'my_component'
+        
+        # Test extracting decorator name from AST (without executing the code)
+        decorator_name = parser._get_name_from_decorator_if_exists('my_component')
+        
+        # Should extract the decorator name
+        assert decorator_name == 'custom-component-name'
+    
+    def test_extract_decorator_name_component_no_name(self, temp_dir):
+        """Test extracting name when decorator has no name parameter."""
+        component_file = temp_dir / "component.py"
+        component_file.write_text("""
+from kfp import dsl
+
+@dsl.component(base_image='python:3.10')
+def my_component(param: str) -> str:
+    '''A component without custom name in decorator.'''
+    return param
+""")
+        
+        parser = ComponentMetadataParser(component_file)
+        
+        # Test extracting decorator name (should return None)
+        decorator_name = parser._get_name_from_decorator_if_exists('my_component')
+        
+        # Should return None when no name in decorator
+        assert decorator_name is None
 
 
 class TestPipelineMetadataParser:
@@ -283,4 +334,55 @@ def regular_function(param: str):
         decorator = tree.body[0].decorator_list[0]
         
         assert parser._is_pipeline_decorator(decorator) is False
+    
+    def test_extract_decorator_name_pipeline(self, temp_dir):
+        """Test extracting name parameter from @dsl.pipeline decorator."""
+        pipeline_file = temp_dir / "pipeline.py"
+        pipeline_file.write_text("""
+from kfp import dsl
+
+@dsl.pipeline(name='custom-pipeline-name', description='A test pipeline')
+def my_pipeline(input_data: str) -> str:
+    '''A pipeline with custom name in decorator.
+    
+    Args:
+        input_data: Input data path.
+        
+    Returns:
+        Output data path.
+    '''
+    return input_data
+""")
+        
+        parser = PipelineMetadataParser(pipeline_file)
+        
+        # Test finding the function
+        function_name = parser.find_function()
+        assert function_name == 'my_pipeline'
+        
+        # Test extracting decorator name from AST (without executing the code)
+        decorator_name = parser._get_name_from_decorator_if_exists('my_pipeline')
+        
+        # Should extract the decorator name
+        assert decorator_name == 'custom-pipeline-name'
+    
+    def test_extract_decorator_name_pipeline_no_name(self, temp_dir):
+        """Test extracting name when decorator has no name parameter."""
+        pipeline_file = temp_dir / "pipeline.py"
+        pipeline_file.write_text("""
+from kfp import dsl
+
+@dsl.pipeline(description='A test pipeline')
+def my_pipeline(input_data: str) -> str:
+    '''A pipeline without custom name in decorator.'''
+    return input_data
+""")
+        
+        parser = PipelineMetadataParser(pipeline_file)
+        
+        # Test extracting decorator name (should return None)
+        decorator_name = parser._get_name_from_decorator_if_exists('my_pipeline')
+        
+        # Should return None when no name in decorator
+        assert decorator_name is None
 
