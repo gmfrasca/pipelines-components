@@ -10,7 +10,7 @@ def hello_world(name: str = "World") -> str:
     """A simple hello world component.
     
     Args:
-        name: The name to greet. Defaults to "World".
+        name: The name to greet. Defaults to "World".  Also editting this to trigger a workflow failure
         
     Returns:
         A greeting message.
