@@ -8,7 +8,7 @@ A simple hello world component.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `name` | `str` | `World` | The name to greet. Defaults to "World". |
+| `name` | `str` | `World` | The name to greet. Defaults to "World".  Also editting this to trigger a workflow failure |
 
 ## Outputs 📤
 
