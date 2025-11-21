@@ -33,7 +33,7 @@ Welcome! This guide covers how to contribute components to the Kubeflow Pipeline
 
 - **Individual Components**: ML tasks (preprocessing, training, evaluation)
 - **Component Collections**: Related component sets
-- **Pipeline Templates**: Complete pipeline examples
+- **Re-usable Pipeline**: Complete pipelines with production-ready usage capabilities
 - **Bug Fixes**: Improvements to existing components
 
 ## Component Structure
@@ -43,10 +43,10 @@ Welcome! This guide covers how to contribute components to the Kubeflow Pipeline
 Each component must follow this structure:
 
 ```
-components/my_component/   # or third_party/components/my_component
-├── __init__.py            # (exposes the component entrypoint for imports)
-├── component.py
-├── metadata.yaml          # Component specification
+components/<category>/<component_name>/
+├── __init__.py            # Exposes component entrypoint
+├── component.py           # Implementation
+├── metadata.yaml          # Specification (see schema below)
 ├── README.md              # Documentation
 ├── OWNERS                 # Maintainers
 ├── Containerfile          # Container definition (required only for custom images)
@@ -65,11 +65,6 @@ See the [developer onboarding guide](ONBOARDING.md) for steps and guidence on de
 ## Testing Requirements
 
 *Minimum testing standards all components must meet.*
-
-- **Unit tests**: Test individual functions
-- **Integration tests**: Test end-to-end functionality  
-- **Coverage**: Minimum 80%
-- **Error handling**: Test failure scenarios
 
 See [TESTING.md](TESTING.md) for detailed testing guidelines.
 

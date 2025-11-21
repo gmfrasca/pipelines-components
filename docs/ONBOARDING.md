@@ -27,8 +27,9 @@ Welcome to the Kubeflow Pipelines Components Repository! This guide will get you
 
 Ensure you have these tools installed:
 
-- **Python** (version 3.9+)
+- **Python** (version 3.10+)
 - **uv** - Fast Python package manager ([installation guide](https://docs.astral.sh/uv/getting-started/installation))
+    - Utilizing this should install dependencies including the `kfp` and `kfp-kubernetes` packages, required for use in KFP Pipelines, among other necessary modules
 - **pre-commit** - Git hook framework for code quality ([installation guide](https://pre-commit.com/#installation))
 - **Docker** or **Podman** to build container images
 - **kubectl** - Kubernetes command-line tool ([installation guide](https://kubernetes.io/docs/tasks/tools/))
@@ -77,33 +78,33 @@ git checkout -b component/my-component
 To create a component, follow the component structure:
 
 ```
-components/my_component/   # or third_party/components/my_component
-├── __init__.py            # (exposes the component entrypoint for imports)
+components/<category>/my_component/   # or third_party/<category>components/my_component
+├── __init__.py                       # (exposes the component entrypoint for imports)
 ├── component.py
-├── metadata.yaml          # Component specification
-├── README.md              # Documentation
-├── OWNERS                 # Maintainers
-├── Containerfile          # Container definition (required only for custom images)
+├── metadata.yaml                     # Component specification
+├── README.md                         # Documentation
+├── OWNERS                            # Maintainers
+├── Containerfile                     # Container definition (required only for core-tier components using custom images)
 ├── example_pipelines.py
 └── tests/
-│   └── test_component.py  # Tests
+│   └── test_component.py             # Tests
 └── <supporting_files>
 ```
 
 To create a full example pipelines, follow the component structure:
 
 ```
-pipelines/my_pipeline           # or third_party/pipelines/my_pipeline
-├── README.md                   # (category index listing each pipeline with summaries/links)
-├── __init__.py                 # (re-exports all pipelines in this category)
+pipelines/<category>/my_pipeline   # or third_party/pipelines/<category>/my_pipeline
+├── README.md                      # (category index listing each pipeline with summaries/links)
+├── __init__.py                    # (re-exports all pipelines in this category)
 └── <pipeline-name>/
-    ├── __init__.py             # (exposes the pipeline entrypoint)
-    ├── pipeline.py             # Pipeline Definition
-    ├── metadata.yaml           # Pipeline specification
-    ├── README.md               # Documentation
-    ├── OWNERS                  # Maintainers
+    ├── __init__.py                # (exposes the pipeline entrypoint)
+    ├── pipeline.py                # Pipeline Definition
+    ├── metadata.yaml              # Pipeline specification
+    ├── README.md                  # Documentation
+    ├── OWNERS                     # Maintainers
     ├── tests/
-    │   └── test_pipeline.py    # Tests  
+    │   └── test_pipeline.py       # Tests  
     └── <supporting_files>
 ```
 
@@ -113,9 +114,9 @@ pipelines/my_pipeline           # or third_party/pipelines/my_pipeline
 Thoroughly test your component before submitting. See [TESTING.md](TESTING.md) for detailed testing guidelines and commands.
 
 **Quick test checklist:**
-- [ ] Run `./scripts/lint.sh` for code quality checks
+- [ ] Run linters (`black --check --line-length 120` and `pydocstyle --convention=google`) for code quality checks
 - [ ] Run `pytest --cov=src` for unit tests with coverage
-- [ ] Build and test your container image
+- [ ] Build and test your container image if provided
 - [ ] Verify component works with sample data
 
 ### 4. Commit Your Changes
@@ -158,12 +159,7 @@ git push --set-upstream origin component/my_component
 **Create PR on GitHub:**
 1. Navigate to your fork on GitHub
 2. Click "Compare & pull request" button
-3. Fill out the PR template:
-   - **Title**: Clear, descriptive title
-   - **Description**: What does this PR do?
-   - **Testing**: How was this tested?
-   - **Checklist**: Complete the provided checklist
-   - **Related Issues**: Link to relevant issues
+3. Fill out the PR template with all applicable data
 
 ## Component Implementation
 
@@ -205,18 +201,28 @@ if __name__ == '__main__':
 #### metadata.yaml
 
 ```yaml
-name: my_component
-description: Brief description
-version: 1.0.0
-inputs:
-  - name: input_data
-    type: Dataset
-    description: Input dataset
-outputs:
-  - name: output_data
-    type: Dataset
-    description: Output dataset
-image: gcr.io/project/my-component:1.0.0
+tier: core | third_party
+name: <string>
+stability: alpha | beta | stable
+dependencies:
+  kubeflow:
+    - name: Pipelines  # Kubeflow Pipelines version is required
+      version: '>=2.5'
+    - name: Trainer  # Other official Kubeflow components required. This is a validated list enforced by CI.
+      version: '>=2.0'
+  external_services:  # A free form of external service dependencies
+    - name: Argo Workflows
+      version: "3.6"
+tags:  # Optional and may be used for tooling built around the catalog in the future
+  - training
+  - evaluation
+lastVerified: 2025-03-15T00:00:00Z
+ci:
+  skip_dependency_probe: false
+  pytest: optional
+links:
+  documentation: https://kubeflow.org/components/<name>
+  issue_tracker: https://github.com/kubeflow/kfp-components/issues
 ```
 
 #### README.md
@@ -236,7 +242,7 @@ reviewers:
   - reviewer1
 ```
 
-#### Containerfile (required only for custom images)
+#### Containerfile (required only for Core-tier Components with custom images)
 
 ```dockerfile
 FROM python:3.9-slim
@@ -257,16 +263,14 @@ For detailed testing and code quality guidelines, see [TESTING.md](TESTING.md).
 
 ```bash
 # Format and lint
-black .
-flake8 .
-pydocstyle .
-mypy .
+black --check --line-length 120
+pydocstyle --convention=google
 
 # Run all checks
-./scripts/lint.sh
+python scripts/validate_metadata.py
 
-# Test with coverage
-pytest --cov=src --cov-report=html
+# Test
+pytest
 ```
 
 ### Testing
@@ -309,8 +313,8 @@ Each component needs a comprehensive README.md with:
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Testing**: [TESTING.md](TESTING.md)
 - **Governance**: [GOVERNANCE.md](GOVERNANCE.md)
-- **Best Practices**: [BESTPRACTICES.md](BESTPRACTICES.md) *(coming soon)*
-- **Agents**: [AGENTS.md](AGENTS.md) *(coming soon)*
+- **Best Practices**: [BESTPRACTICES.md](BESTPRACTICES.md)
+- **Agents**: [AGENTS.md](AGENTS.md)
 - **Community**: [#kubeflow-pipelines Slack](https://kubeflow.slack.com/channels/kubeflow-pipelines)
 - **Issues**: [GitHub Issues](https://github.com/kubeflow/pipelines-components/issues) for bugs and questions
 
