@@ -1,0 +1,28 @@
+name: Hello World Pipeline
+description: A simple hello world pipeline that demonstrates basic Kubeflow Pipelines pipeline structure
+components:
+  - hello_world
+image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+tier: core
+stability: stable
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: ">=2.5"
+    - name: Trainer  # Other official Kubeflow components required. This is a validated list enforced by CI.
+      version: '>=2.0'
+  external_services:  # A free form of external service dependencies
+    - name: Argo Workflows
+      version: "3.6"
+tags:
+  - hello-world
+  - example
+  - demo
+lastVerified: "2025-11-14 00:00:00+00:00"
+links:
+  documentation: https://kubeflow.org/pipelines/hello-world/
+  issue_tracker: https://github.com/kubeflow/pipelines-components/issues
+ci:
+  skip_dependency_probe: false
+  pytest: optional
+
