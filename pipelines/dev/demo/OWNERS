@@ -1,0 +1,12 @@
+# This file lists the maintainers and reviewers for the hello_world component
+# Following the Kubernetes OWNERS format
+# See https://go.k8s.io/owners for more details
+
+# Approvers are responsible for approving code changes
+approvers:
+  - gmfrasca
+
+# Reviewers are responsible for reviewing code changes
+reviewers:
+  - gmfrasca
+
