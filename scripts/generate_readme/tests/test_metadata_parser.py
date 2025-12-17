@@ -3,105 +3,105 @@
 import ast
 from pathlib import Path
 
-from ..metadata_parser import MetadataParser
-
 import pytest
+
+from ..metadata_parser import MetadataParser
 
 
 class TestMetadataParser:
     """Tests for the MetadataParser base class methods."""
-    
+
     def test_parse_google_docstring_with_args_and_returns(self):
         """Test parsing a complete Google-style docstring."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
+        parser = MetadataParser(Path("dummy.py"), "component")
         docstring = """A sample function.
-        
+
         This does something useful.
-        
+
         Args:
             param1 (str): First parameter description.
             param2 (int): Second parameter description.
-            
+
         Returns:
             The result of processing.
         """
-        
+
         result = parser._parse_google_docstring(docstring)
-        
+
         # docstring-parser normalizes whitespace and joins short + long description
-        assert result['overview'] == "A sample function.\n\nThis does something useful."
-        assert 'param1' in result['args']
-        assert result['args']['param1'] == "First parameter description."
-        assert result['args']['param2'] == "Second parameter description."
-        assert 'result of processing' in result['returns_description']
-    
+        assert result["overview"] == "A sample function.\n\nThis does something useful."
+        assert "param1" in result["args"]
+        assert result["args"]["param1"] == "First parameter description."
+        assert result["args"]["param2"] == "Second parameter description."
+        assert "result of processing" in result["returns_description"]
+
     def test_parse_google_docstring_empty(self):
         """Test parsing an empty docstring raises ValueError (docstring is required)."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         with pytest.raises(ValueError, match="missing required docstring"):
             parser._parse_google_docstring("")
-    
+
     def test_parse_google_docstring_multiline_arg_description(self):
         """Test parsing arguments with multi-line descriptions."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
+        parser = MetadataParser(Path("dummy.py"), "component")
         docstring = """Sample function.
-        
+
         Args:
             long_param (str): This is a very long parameter description
                 that spans multiple lines and should be concatenated together.
         """
-        
+
         result = parser._parse_google_docstring(docstring)
-        
-        assert 'long_param' in result['args']
-        assert 'multiple lines' in result['args']['long_param']
-        assert 'concatenated together' in result['args']['long_param']
-    
+
+        assert "long_param" in result["args"]
+        assert "multiple lines" in result["args"]["long_param"]
+        assert "concatenated together" in result["args"]["long_param"]
+
     def test_annotation_to_string_basic(self):
         """Test _annotation_to_string for basic type annotations."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Test simple Name nodes
-        assert parser._annotation_to_string(ast.Name(id='str')) == 'str'
-        assert parser._annotation_to_string(ast.Name(id='int')) == 'int'
-        
+        assert parser._annotation_to_string(ast.Name(id="str")) == "str"
+        assert parser._annotation_to_string(ast.Name(id="int")) == "int"
+
         # Test None returns 'Any'
-        assert parser._annotation_to_string(None) == 'Any'
-    
+        assert parser._annotation_to_string(None) == "Any"
+
     def test_annotation_to_string_complex(self):
         """Test _annotation_to_string for complex type annotations."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Parse actual Python code to get real AST nodes
         code = "def f(x: Optional[str], y: List[int], z: Dict[str, int]): pass"
         tree = ast.parse(code)
         func = tree.body[0]
-        
+
         # Extract annotations from parsed function
         annotations = [arg.annotation for arg in func.args.args]
-        
-        assert parser._annotation_to_string(annotations[0]) == 'Optional[str]'
-        assert parser._annotation_to_string(annotations[1]) == 'List[int]'
-        assert parser._annotation_to_string(annotations[2]) == 'Dict[str, int]'
-    
+
+        assert parser._annotation_to_string(annotations[0]) == "Optional[str]"
+        assert parser._annotation_to_string(annotations[1]) == "List[int]"
+        assert parser._annotation_to_string(annotations[2]) == "Dict[str, int]"
+
     def test_default_to_value_constants(self):
         """Test _default_to_value returns actual values for constants."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Test constants return actual Python values
         assert parser._default_to_value(ast.Constant(value=10)) == 10
         assert parser._default_to_value(ast.Constant(value="hello")) == "hello"
         assert parser._default_to_value(ast.Constant(value=None)) is None
         assert parser._default_to_value(ast.Constant(value=True)) is True
-        
+
         # Test None (no default) returns None
         assert parser._default_to_value(None) is None
 
 
 class TestMetadataParserComponents:
     """Tests for MetadataParser with component functions."""
-    
+
     def test_find_function_with_dsl_component(self, temp_dir):
         """Test finding a function with @dsl.component decorator."""
         component_file = temp_dir / "component.py"
@@ -112,8 +112,8 @@ from kfp import dsl
 def my_component(param: str):
     pass
 """)
-        
-        parser = MetadataParser(component_file, 'component')
+
+        parser = MetadataParser(component_file, "component")
         result = parser.find_function()
 
         assert result == "my_component"
@@ -128,8 +128,8 @@ from kfp.dsl import component
 def my_component(param: str):
     pass
 """)
-        
-        parser = MetadataParser(component_file, 'component')
+
+        parser = MetadataParser(component_file, "component")
         result = parser.find_function()
 
         assert result == "my_component"
@@ -144,12 +144,12 @@ from kfp import dsl
 def my_component(param: str):
     pass
 """)
-        
-        parser = MetadataParser(component_file, 'component')
+
+        parser = MetadataParser(component_file, "component")
         result = parser.find_function()
-        
+
         assert result == "my_component"
-    
+
     def test_find_function_not_found(self, temp_dir):
         """Test when no component function is found."""
         component_file = temp_dir / "component.py"
@@ -157,56 +157,56 @@ def my_component(param: str):
 def regular_function(param: str):
     pass
 """)
-        
-        parser = MetadataParser(component_file, 'component')
+
+        parser = MetadataParser(component_file, "component")
         result = parser.find_function()
-        
+
         assert result is None
-    
+
     def test_is_target_decorator_dsl_component(self):
         """Test _is_target_decorator with @dsl.component."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Create AST node for @dsl.component
         code = "@dsl.component\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is True
-    
+
     def test_is_target_decorator_direct_import(self):
         """Test _is_target_decorator with @component."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Create AST node for @component
         code = "@component\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is True
-    
+
     def test_is_target_decorator_kfp_dsl_component(self):
         """Test _is_target_decorator with @kfp.dsl.component."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Create AST node for @kfp.dsl.component
         code = "@kfp.dsl.component\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is True
-    
+
     def test_is_target_decorator_wrong_decorator(self):
         """Test _is_target_decorator with non-component decorator."""
-        parser = MetadataParser(Path("dummy.py"), 'component')
-        
+        parser = MetadataParser(Path("dummy.py"), "component")
+
         # Create AST node for @pipeline
         code = "@pipeline\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is False
-    
+
     def test_extract_decorator_name_component(self, temp_dir):
         """Test extracting name parameter from @dsl.component decorator."""
         component_file = temp_dir / "component.py"
@@ -216,28 +216,28 @@ from kfp import dsl
 @dsl.component(name='custom-component-name', base_image='python:3.10')
 def my_component(param: str) -> str:
     '''A component with custom name in decorator.
-    
+
     Args:
         param: Input parameter.
-        
+
     Returns:
         Output value.
     '''
     return param
 """)
-        
-        parser = MetadataParser(component_file, 'component')
-        
+
+        parser = MetadataParser(component_file, "component")
+
         # Test finding the function
         function_name = parser.find_function()
-        assert function_name == 'my_component'
-        
+        assert function_name == "my_component"
+
         # Test extracting decorator name from AST (without executing the code)
-        decorator_name = parser._get_name_from_decorator_if_exists('my_component')
-        
+        decorator_name = parser._get_name_from_decorator_if_exists("my_component")
+
         # Should extract the decorator name
-        assert decorator_name == 'custom-component-name'
-    
+        assert decorator_name == "custom-component-name"
+
     def test_extract_decorator_name_component_no_name(self, temp_dir):
         """Test extracting name when decorator has no name parameter."""
         component_file = temp_dir / "component.py"
@@ -249,12 +249,12 @@ def my_component(param: str) -> str:
     '''A component without custom name in decorator.'''
     return param
 """)
-        
-        parser = MetadataParser(component_file, 'component')
-        
+
+        parser = MetadataParser(component_file, "component")
+
         # Test extracting decorator name (should return None)
-        decorator_name = parser._get_name_from_decorator_if_exists('my_component')
-        
+        decorator_name = parser._get_name_from_decorator_if_exists("my_component")
+
         # Should return None when no name in decorator
         assert decorator_name is None
 
@@ -280,28 +280,28 @@ def my_component(input_text: str, count: int = 5) -> str:
     return input_text * count
 """)
 
-        parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_component')
+        parser = MetadataParser(component_file, "component")
+        metadata = parser.extract_metadata("my_component")
 
         # Verify basic metadata
-        assert metadata['name'] == 'my_component'
-        assert 'A sample component for testing' in metadata['overview']
-        assert 'processes text input' in metadata['overview']
+        assert metadata["name"] == "my_component"
+        assert "A sample component for testing" in metadata["overview"]
+        assert "processes text input" in metadata["overview"]
 
         # Verify parameters
-        assert 'input_text' in metadata['parameters']
-        assert metadata['parameters']['input_text']['type'] == 'str'
-        assert metadata['parameters']['input_text']['default'] is None
-        assert 'text to process' in metadata['parameters']['input_text']['description']
+        assert "input_text" in metadata["parameters"]
+        assert metadata["parameters"]["input_text"]["type"] == "str"
+        assert metadata["parameters"]["input_text"]["default"] is None
+        assert "text to process" in metadata["parameters"]["input_text"]["description"]
 
-        assert 'count' in metadata['parameters']
-        assert metadata['parameters']['count']['type'] == 'int'
-        assert metadata['parameters']['count']['default'] == 5
-        assert 'Number of times' in metadata['parameters']['count']['description']
+        assert "count" in metadata["parameters"]
+        assert metadata["parameters"]["count"]["type"] == "int"
+        assert metadata["parameters"]["count"]["default"] == 5
+        assert "Number of times" in metadata["parameters"]["count"]["description"]
 
         # Verify returns
-        assert metadata['returns']['type'] == 'str'
-        assert 'processed text output' in metadata['returns']['description']
+        assert metadata["returns"]["type"] == "str"
+        assert "processed text output" in metadata["returns"]["description"]
 
     def test_extract_metadata_uses_function_name(self, temp_dir):
         """Test that component uses function name when no decorator name exists."""
@@ -319,12 +319,12 @@ def my_custom_component(param: str):
     print(param)
 """)
 
-        parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_custom_component')
+        parser = MetadataParser(component_file, "component")
+        metadata = parser.extract_metadata("my_custom_component")
 
         # Should use the function name since components don't support 'name' parameter
-        assert metadata['name'] == 'my_custom_component'
-        assert 'function name' in metadata['overview']
+        assert metadata["name"] == "my_custom_component"
+        assert "function name" in metadata["overview"]
 
     def test_extract_metadata_no_docstring(self, temp_dir):
         """Test extracting metadata from component without docstring raises ValueError (docstring is required)."""
@@ -337,11 +337,11 @@ def my_component(param: str) -> str:
     return param
 """)
 
-        parser = MetadataParser(component_file, 'component')
+        parser = MetadataParser(component_file, "component")
 
         # Should raise ValueError since docstring is required
         with pytest.raises(ValueError, match="missing required docstring"):
-            parser.extract_metadata('my_component')
+            parser.extract_metadata("my_component")
 
     def test_extract_metadata_optional_types(self, temp_dir):
         """Test extracting metadata with Optional types."""
@@ -361,15 +361,15 @@ def my_component(required_param: str, optional_param: Optional[int] = None):
     print(f"{required_param}: {optional_param}")
 """)
 
-        parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_component')
+        parser = MetadataParser(component_file, "component")
+        metadata = parser.extract_metadata("my_component")
 
         # Verify optional parameter type
-        assert 'optional_param' in metadata['parameters']
-        param_type = metadata['parameters']['optional_param']['type']
+        assert "optional_param" in metadata["parameters"]
+        param_type = metadata["parameters"]["optional_param"]["type"]
         # Should contain Optional (or Union with None)
-        assert 'Optional' in param_type or ('Union' in param_type and 'None' in param_type)
-        assert metadata['parameters']['optional_param']['default'] is None
+        assert "Optional" in param_type or ("Union" in param_type and "None" in param_type)
+        assert metadata["parameters"]["optional_param"]["default"] is None
 
     def test_extract_metadata_list_types(self, temp_dir):
         """Test extracting metadata with List types."""
@@ -391,17 +391,17 @@ def my_component(items: List[str]) -> List[int]:
     return [len(item) for item in items]
 """)
 
-        parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_component')
+        parser = MetadataParser(component_file, "component")
+        metadata = parser.extract_metadata("my_component")
 
         # Verify list parameter type
-        assert 'items' in metadata['parameters']
-        param_type = metadata['parameters']['items']['type'].lower()
-        assert 'list' in param_type
+        assert "items" in metadata["parameters"]
+        param_type = metadata["parameters"]["items"]["type"].lower()
+        assert "list" in param_type
 
         # Verify list return type
-        return_type = metadata['returns']['type'].lower()
-        assert 'list' in return_type
+        return_type = metadata["returns"]["type"].lower()
+        assert "list" in return_type
 
     def test_extract_metadata_no_return_annotation(self, temp_dir):
         """Test extracting metadata from component without return annotation."""
@@ -419,14 +419,14 @@ def my_component(param: str):
     print(param)
 """)
 
-        parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_component')
+        parser = MetadataParser(component_file, "component")
+        metadata = parser.extract_metadata("my_component")
 
         # Should handle missing return annotation
-        assert metadata['name'] == 'my_component'
-        assert 'param' in metadata['parameters']
+        assert metadata["name"] == "my_component"
+        assert "param" in metadata["parameters"]
         # Returns should be empty dict when no annotation
-        assert metadata['returns'] == {}
+        assert metadata["returns"] == {}
 
     def test_extract_metadata_multiple_params_with_defaults(self, temp_dir):
         """Test extracting metadata with multiple parameters and various defaults."""
@@ -455,28 +455,28 @@ def my_component(
     return f"{name}: {age}, {active}, {score}"
 """)
 
-        parser = MetadataParser(component_file, 'component')
-        metadata = parser.extract_metadata('my_component')
+        parser = MetadataParser(component_file, "component")
+        metadata = parser.extract_metadata("my_component")
 
         # Verify all parameters
-        assert len(metadata['parameters']) == 4
+        assert len(metadata["parameters"]) == 4
 
-        assert metadata['parameters']['name']['type'] == 'str'
-        assert metadata['parameters']['name']['default'] is None
+        assert metadata["parameters"]["name"]["type"] == "str"
+        assert metadata["parameters"]["name"]["default"] is None
 
-        assert metadata['parameters']['age']['type'] == 'int'
-        assert metadata['parameters']['age']['default'] == 25
+        assert metadata["parameters"]["age"]["type"] == "int"
+        assert metadata["parameters"]["age"]["default"] == 25
 
-        assert metadata['parameters']['active']['type'] == 'bool'
-        assert metadata['parameters']['active']['default'] is True
+        assert metadata["parameters"]["active"]["type"] == "bool"
+        assert metadata["parameters"]["active"]["default"] is True
 
-        assert metadata['parameters']['score']['type'] == 'float'
-        assert metadata['parameters']['score']['default'] == pytest.approx(0.95)
+        assert metadata["parameters"]["score"]["type"] == "float"
+        assert metadata["parameters"]["score"]["default"] == pytest.approx(0.95)
 
 
 class TestMetadataParserPipelines:
     """Tests for MetadataParser with pipeline functions."""
-    
+
     def test_find_function_with_dsl_pipeline(self, temp_dir):
         """Test finding a function with @dsl.pipeline decorator."""
         pipeline_file = temp_dir / "pipeline.py"
@@ -487,12 +487,12 @@ from kfp import dsl
 def my_pipeline(param: str):
     pass
 """)
-        
-        parser = MetadataParser(pipeline_file, 'pipeline')
+
+        parser = MetadataParser(pipeline_file, "pipeline")
         result = parser.find_function()
-        
+
         assert result == "my_pipeline"
-    
+
     def test_find_function_with_pipeline_decorator(self, temp_dir):
         """Test finding a function with @pipeline decorator."""
         pipeline_file = temp_dir / "pipeline.py"
@@ -503,12 +503,12 @@ from kfp.dsl import pipeline
 def my_pipeline(param: str):
     pass
 """)
-        
-        parser = MetadataParser(pipeline_file, 'pipeline')
+
+        parser = MetadataParser(pipeline_file, "pipeline")
         result = parser.find_function()
-        
+
         assert result == "my_pipeline"
-    
+
     def test_find_function_not_found(self, temp_dir):
         """Test when no pipeline function is found."""
         pipeline_file = temp_dir / "pipeline.py"
@@ -516,45 +516,45 @@ def my_pipeline(param: str):
 def regular_function(param: str):
     pass
 """)
-        
-        parser = MetadataParser(pipeline_file, 'pipeline')
+
+        parser = MetadataParser(pipeline_file, "pipeline")
         result = parser.find_function()
-        
+
         assert result is None
-    
+
     def test_is_target_decorator_dsl_pipeline(self):
         """Test _is_target_decorator with @dsl.pipeline."""
-        parser = MetadataParser(Path("dummy.py"), 'pipeline')
-        
+        parser = MetadataParser(Path("dummy.py"), "pipeline")
+
         # Create AST node for @dsl.pipeline
         code = "@dsl.pipeline\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is True
-    
+
     def test_is_target_decorator_with_args(self):
         """Test _is_target_decorator with @dsl.pipeline(name='test')."""
-        parser = MetadataParser(Path("dummy.py"), 'pipeline')
-        
+        parser = MetadataParser(Path("dummy.py"), "pipeline")
+
         # Create AST node for @dsl.pipeline(name='test')
         code = "@dsl.pipeline(name='test')\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is True
-    
+
     def test_is_target_decorator_wrong_pipeline_decorator(self):
         """Test _is_target_decorator with non-pipeline decorator."""
-        parser = MetadataParser(Path("dummy.py"), 'pipeline')
-        
+        parser = MetadataParser(Path("dummy.py"), "pipeline")
+
         # Create AST node for @component
         code = "@component\ndef func(): pass"
         tree = ast.parse(code)
         decorator = tree.body[0].decorator_list[0]
-        
+
         assert parser._is_target_decorator(decorator) is False
-    
+
     def test_extract_decorator_name_pipeline(self, temp_dir):
         """Test extracting name parameter from @dsl.pipeline decorator."""
         pipeline_file = temp_dir / "pipeline.py"
@@ -564,28 +564,28 @@ from kfp import dsl
 @dsl.pipeline(name='custom-pipeline-name', description='A test pipeline')
 def my_pipeline(input_data: str) -> str:
     '''A pipeline with custom name in decorator.
-    
+
     Args:
         input_data: Input data path.
-        
+
     Returns:
         Output data path.
     '''
     return input_data
 """)
-        
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        
+
+        parser = MetadataParser(pipeline_file, "pipeline")
+
         # Test finding the function
         function_name = parser.find_function()
-        assert function_name == 'my_pipeline'
-        
+        assert function_name == "my_pipeline"
+
         # Test extracting decorator name from AST (without executing the code)
-        decorator_name = parser._get_name_from_decorator_if_exists('my_pipeline')
-        
+        decorator_name = parser._get_name_from_decorator_if_exists("my_pipeline")
+
         # Should extract the decorator name
-        assert decorator_name == 'custom-pipeline-name'
-    
+        assert decorator_name == "custom-pipeline-name"
+
     def test_extract_decorator_name_pipeline_no_name(self, temp_dir):
         """Test extracting name when decorator has no name parameter."""
         pipeline_file = temp_dir / "pipeline.py"
@@ -597,12 +597,12 @@ def my_pipeline(input_data: str) -> str:
     '''A pipeline without custom name in decorator.'''
     return input_data
 """)
-        
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        
+
+        parser = MetadataParser(pipeline_file, "pipeline")
+
         # Test extracting decorator name (should return None)
-        decorator_name = parser._get_name_from_decorator_if_exists('my_pipeline')
-        
+        decorator_name = parser._get_name_from_decorator_if_exists("my_pipeline")
+
         # Should return None when no name in decorator
         assert decorator_name is None
 
@@ -630,28 +630,28 @@ def my_pipeline(input_path: str, output_path: str, num_epochs: int = 10):
     dummy_component()
 """)
 
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
+        parser = MetadataParser(pipeline_file, "pipeline")
+        metadata = parser.extract_metadata("my_pipeline")
 
         # Verify basic metadata
-        assert metadata['name'] == 'my_pipeline'
-        assert 'sample training pipeline' in metadata['overview']
-        assert 'trains a machine learning model' in metadata['overview']
+        assert metadata["name"] == "my_pipeline"
+        assert "sample training pipeline" in metadata["overview"]
+        assert "trains a machine learning model" in metadata["overview"]
 
         # Verify parameters
-        assert 'input_path' in metadata['parameters']
-        assert metadata['parameters']['input_path']['type'] == 'str'
-        assert metadata['parameters']['input_path']['default'] is None
-        assert 'training data' in metadata['parameters']['input_path']['description']
+        assert "input_path" in metadata["parameters"]
+        assert metadata["parameters"]["input_path"]["type"] == "str"
+        assert metadata["parameters"]["input_path"]["default"] is None
+        assert "training data" in metadata["parameters"]["input_path"]["description"]
 
-        assert 'output_path' in metadata['parameters']
-        assert metadata['parameters']['output_path']['type'] == 'str'
-        assert metadata['parameters']['output_path']['default'] is None
+        assert "output_path" in metadata["parameters"]
+        assert metadata["parameters"]["output_path"]["type"] == "str"
+        assert metadata["parameters"]["output_path"]["default"] is None
 
-        assert 'num_epochs' in metadata['parameters']
-        assert metadata['parameters']['num_epochs']['type'] == 'int'
-        assert metadata['parameters']['num_epochs']['default'] == 10
-        assert 'training epochs' in metadata['parameters']['num_epochs']['description']
+        assert "num_epochs" in metadata["parameters"]
+        assert metadata["parameters"]["num_epochs"]["type"] == "int"
+        assert metadata["parameters"]["num_epochs"]["default"] == 10
+        assert "training epochs" in metadata["parameters"]["num_epochs"]["description"]
 
     def test_extract_metadata_with_custom_name(self, temp_dir):
         """Test extracting metadata when decorator has custom name."""
@@ -673,12 +673,12 @@ def my_pipeline(data_path: str):
     dummy_comp()
 """)
 
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
+        parser = MetadataParser(pipeline_file, "pipeline")
+        metadata = parser.extract_metadata("my_pipeline")
 
         # Should use the decorator name, not function name
-        assert metadata['name'] == 'custom-pipeline-name'
-        assert 'custom name' in metadata['overview']
+        assert metadata["name"] == "custom-pipeline-name"
+        assert "custom name" in metadata["overview"]
 
     def test_extract_metadata_no_docstring(self, temp_dir):
         """Test extracting metadata from pipeline without docstring."""
@@ -696,8 +696,8 @@ def my_pipeline(param: str):
 """)
         # Should raise ValueError if docstring is missing
         with pytest.raises(ValueError):
-            parser = MetadataParser(pipeline_file, 'pipeline')
-            parser.extract_metadata('my_pipeline')
+            parser = MetadataParser(pipeline_file, "pipeline")
+            parser.extract_metadata("my_pipeline")
 
     def test_extract_metadata_optional_types(self, temp_dir):
         """Test extracting metadata with Optional types."""
@@ -724,15 +724,15 @@ def my_pipeline(
     dummy_comp()
 """)
 
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
+        parser = MetadataParser(pipeline_file, "pipeline")
+        metadata = parser.extract_metadata("my_pipeline")
 
         # Verify optional parameter type
-        assert 'optional_config' in metadata['parameters']
-        param_type = metadata['parameters']['optional_config']['type']
+        assert "optional_config" in metadata["parameters"]
+        param_type = metadata["parameters"]["optional_config"]["type"]
         # Should contain Optional (or Union with None)
-        assert 'Optional' in param_type or ('Union' in param_type and 'None' in param_type)
-        assert metadata['parameters']['optional_config']['default'] is None
+        assert "Optional" in param_type or ("Union" in param_type and "None" in param_type)
+        assert metadata["parameters"]["optional_config"]["default"] is None
 
     def test_extract_metadata_dict_types(self, temp_dir):
         """Test extracting metadata with Dict types."""
@@ -756,17 +756,17 @@ def my_pipeline(config: Dict[str, str], hyperparams: Dict[str, float]):
     dummy_comp()
 """)
 
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
+        parser = MetadataParser(pipeline_file, "pipeline")
+        metadata = parser.extract_metadata("my_pipeline")
 
         # Verify dict parameter types
-        assert 'config' in metadata['parameters']
-        config_type = metadata['parameters']['config']['type']
-        assert 'Dict' in config_type or 'dict' in config_type.lower()
+        assert "config" in metadata["parameters"]
+        config_type = metadata["parameters"]["config"]["type"]
+        assert "Dict" in config_type or "dict" in config_type.lower()
 
-        assert 'hyperparams' in metadata['parameters']
-        hyperparams_type = metadata['parameters']['hyperparams']['type']
-        assert 'Dict' in hyperparams_type or 'dict' in hyperparams_type.lower()
+        assert "hyperparams" in metadata["parameters"]
+        hyperparams_type = metadata["parameters"]["hyperparams"]["type"]
+        assert "Dict" in hyperparams_type or "dict" in hyperparams_type.lower()
 
     def test_extract_metadata_no_parameters(self, temp_dir):
         """Test extracting metadata from pipeline without parameters."""
@@ -787,13 +787,13 @@ def my_pipeline():
     dummy_comp()
 """)
 
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
+        parser = MetadataParser(pipeline_file, "pipeline")
+        metadata = parser.extract_metadata("my_pipeline")
 
         # Should handle no parameters gracefully
-        assert metadata['name'] == 'my_pipeline'
-        assert 'simple pipeline' in metadata['overview']
-        assert len(metadata['parameters']) == 0
+        assert metadata["name"] == "my_pipeline"
+        assert "simple pipeline" in metadata["overview"]
+        assert len(metadata["parameters"]) == 0
 
     def test_extract_metadata_complex_pipeline(self, temp_dir):
         """Test extracting metadata from a complex pipeline with many parameters."""
@@ -830,31 +830,31 @@ def my_pipeline(
     dummy_comp()
 """)
 
-        parser = MetadataParser(pipeline_file, 'pipeline')
-        metadata = parser.extract_metadata('my_pipeline')
+        parser = MetadataParser(pipeline_file, "pipeline")
+        metadata = parser.extract_metadata("my_pipeline")
 
         # Verify custom name
-        assert metadata['name'] == 'complex-ml-pipeline'
-        assert 'complex machine learning pipeline' in metadata['overview']
+        assert metadata["name"] == "complex-ml-pipeline"
+        assert "complex machine learning pipeline" in metadata["overview"]
 
         # Verify all parameters with correct types and defaults
-        assert len(metadata['parameters']) == 6
+        assert len(metadata["parameters"]) == 6
 
-        assert metadata['parameters']['dataset_path']['type'] == 'str'
-        assert metadata['parameters']['dataset_path']['default'] is None
+        assert metadata["parameters"]["dataset_path"]["type"] == "str"
+        assert metadata["parameters"]["dataset_path"]["default"] is None
 
-        assert metadata['parameters']['model_type']['type'] == 'str'
-        assert metadata['parameters']['model_type']['default'] == "xgboost"
+        assert metadata["parameters"]["model_type"]["type"] == "str"
+        assert metadata["parameters"]["model_type"]["default"] == "xgboost"
 
-        assert metadata['parameters']['learning_rate']['type'] == 'float'
-        assert metadata['parameters']['learning_rate']['default'] == pytest.approx(0.01)
+        assert metadata["parameters"]["learning_rate"]["type"] == "float"
+        assert metadata["parameters"]["learning_rate"]["default"] == pytest.approx(0.01)
 
-        assert metadata['parameters']['num_iterations']['type'] == 'int'
-        assert metadata['parameters']['num_iterations']['default'] == 1000
+        assert metadata["parameters"]["num_iterations"]["type"] == "int"
+        assert metadata["parameters"]["num_iterations"]["default"] == 1000
 
-        assert metadata['parameters']['enable_validation']['type'] == 'bool'
-        assert metadata['parameters']['enable_validation']['default'] is True
+        assert metadata["parameters"]["enable_validation"]["type"] == "bool"
+        assert metadata["parameters"]["enable_validation"]["default"] is True
 
-        feature_type = metadata['parameters']['feature_columns']['type']
-        assert 'Optional' in feature_type or 'Union' in feature_type
-        assert metadata['parameters']['feature_columns']['default'] is None
+        feature_type = metadata["parameters"]["feature_columns"]["type"]
+        assert "Optional" in feature_type or "Union" in feature_type
+        assert metadata["parameters"]["feature_columns"]["default"] is None

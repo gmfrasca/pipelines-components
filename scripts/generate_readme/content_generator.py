@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict
+
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
@@ -24,13 +25,13 @@ class ReadmeContentGenerator:
         """
         self.metadata = metadata
         self.source_dir = source_dir
-        self.metadata_file = source_dir / 'metadata.yaml'
-        self.example_file = source_dir / 'example_pipelines.py'
-        self.owners_file = source_dir / 'OWNERS'
+        self.metadata_file = source_dir / "metadata.yaml"
+        self.example_file = source_dir / "example_pipelines.py"
+        self.owners_file = source_dir / "OWNERS"
         self.feature_metadata = self._load_feature_metadata()
 
         # Set up Jinja2 environment
-        template_dir = Path(__file__).parent / 'templates'
+        template_dir = Path(__file__).parent / "templates"
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
             trim_blocks=True,
@@ -50,17 +51,17 @@ class ReadmeContentGenerator:
         if self.metadata_file.exists() is False:
             raise ValueError(f"Required metadata.yaml file not found in {self.source_dir}")
         try:
-            with open(self.metadata_file, 'r', encoding='utf-8') as f:
+            with open(self.metadata_file, "r", encoding="utf-8") as f:
                 yaml_data = yaml.safe_load(f)
             if yaml_data is None:
                 raise ValueError(f"Required metadata.yaml file is empty: {self.metadata_file}")
 
-            if 'name' not in yaml_data:
+            if "name" not in yaml_data:
                 raise ValueError(f"Required `name` field not found in {self.metadata_file.name}")
 
             # Remove 'ci' field if present
-            if yaml_data and 'ci' in yaml_data:
-                yaml_data.pop('ci')
+            if yaml_data and "ci" in yaml_data:
+                yaml_data.pop("ci")
 
             yaml_data = yaml_data or {}
         except Exception as e:
@@ -70,7 +71,7 @@ class ReadmeContentGenerator:
         # Augment with owners information from OWNERS file
         owners_data = self._load_owners()
         if owners_data:
-            yaml_data['owners'] = owners_data
+            yaml_data["owners"] = owners_data
 
         return yaml_data
 
@@ -82,7 +83,7 @@ class ReadmeContentGenerator:
         """
         if self.owners_file.exists():
             try:
-                with open(self.owners_file, 'r', encoding='utf-8') as f:
+                with open(self.owners_file, "r", encoding="utf-8") as f:
                     owners_data = yaml.safe_load(f)
                 return owners_data or {}
             except Exception as e:
@@ -98,12 +99,12 @@ class ReadmeContentGenerator:
         """
         if self.example_file.exists():
             try:
-                with open(self.example_file, 'r', encoding='utf-8') as f:
+                with open(self.example_file, "r", encoding="utf-8") as f:
                     return f.read()
             except Exception as e:
                 logger.warning(f"Error reading Example Pipelines file ({self.example_file}): {e}")
-                return ''
-        return ''
+                return ""
+        return ""
 
     def _format_key(self, key: str) -> str:
         """Format a metadata key for human-readable display.
@@ -126,41 +127,41 @@ class ReadmeContentGenerator:
         Returns:
             Formatted value as a string with proper markdown list indentation.
         """
-        indent = '  ' * depth  # 2 spaces per depth level
+        indent = "  " * depth  # 2 spaces per depth level
 
         if isinstance(value, bool):
-            return 'Yes' if value else 'No'
+            return "Yes" if value else "No"
 
         elif isinstance(value, list):
             if not value:
-                return 'None'
+                return "None"
             items = []
             for item in value:
                 if isinstance(item, dict):
                     # Dict in list: format as comma-separated key-value pairs
                     parts = [f"{self._format_key(k)}: {v}" for k, v in item.items()]
-                    items.append(', '.join(parts))
+                    items.append(", ".join(parts))
                 else:
                     # Simple item: just convert to string
                     items.append(str(item))
-            return '\n' + indent + '  - ' + f'\n{indent}  - '.join(items)
+            return "\n" + indent + "  - " + f"\n{indent}  - ".join(items)
 
         elif isinstance(value, dict):
             if not value:
-                return 'None'
+                return "None"
             items = []
             for k, v in value.items():
                 key = self._format_key(k)
                 val = self._format_value(v, depth + 1)
                 # If value has newlines (nested structure), format with colon on same line
-                if '\n' in val:
+                if "\n" in val:
                     items.append(f"{key}:{val}")
                 else:
                     items.append(f"{key}: {val}")
-            return '\n' + indent + '  - ' + f'\n{indent}  - '.join(items)
+            return "\n" + indent + "  - " + f"\n{indent}  - ".join(items)
 
         elif value is None:
-            return 'None'
+            return "None"
 
         else:
             return str(value)
@@ -172,10 +173,7 @@ class ReadmeContentGenerator:
         Returns:
             Dictionary with formatted keys and values.
         """
-        return {
-            format_title(key): self._format_value(value)
-            for key, value in self.feature_metadata.items()
-        }
+        return {format_title(key): self._format_value(value) for key, value in self.feature_metadata.items()}
 
     def generate_readme(self) -> str:
         """Dynamically generate complete README.md content from component or pipeline metadata
@@ -193,50 +191,50 @@ class ReadmeContentGenerator:
             Dictionary containing all variables needed by the template.
         """
         # Prefer name from metadata.yaml over function name
-        component_name = self.feature_metadata.get('name')
+        component_name = self.feature_metadata.get("name")
 
         # Prepare title
         title = format_title(component_name)
 
         # Prepare overview
-        overview = self.metadata.get('overview', '')
+        overview = self.metadata.get("overview", "")
         if not overview:
             overview = f"A Kubeflow Pipelines component for {component_name.replace('_', ' ')}."
 
         # Prepare parameters with formatted defaults
         parameters = {}
-        for param_name, param_info in self.metadata.get('parameters', {}).items():
-            param_type = param_info.get('type', 'Any')
-            default_str = f"`{param_info['default']}`" if 'default' in param_info else "Required"
-            description = param_info.get('description', '')
+        for param_name, param_info in self.metadata.get("parameters", {}).items():
+            param_type = param_info.get("type", "Any")
+            default_str = f"`{param_info['default']}`" if "default" in param_info else "Required"
+            description = param_info.get("description", "")
 
             parameters[param_name] = {
-                'type': param_type,
-                'default_str': default_str,
-                'description': description,
+                "type": param_type,
+                "default_str": default_str,
+                "description": description,
             }
 
         # Prepare returns
-        returns = self.metadata.get('returns', {})
+        returns = self.metadata.get("returns", {})
         if returns:
             returns = {
-                'type': returns.get('type', 'Any'),
-                'description': returns.get('description', 'Component output'),
+                "type": returns.get("type", "Any"),
+                "description": returns.get("description", "Component output"),
             }
 
         # Load example pipeline if it exists
         example_code = self._load_example_pipelines()
 
         # Extract links for separate Additional Resources section (removes from feature_metadata)
-        links = self.feature_metadata.pop('links', {})
+        links = self.feature_metadata.pop("links", {})
 
         return {
-            'title': title,
-            'overview': overview,
-            'parameters': parameters,
-            'returns': returns,
-            'component_name': component_name,
-            'example_code': example_code,
-            'formatted_metadata': self.formatted_feature_metadata,
-            'links': links,
+            "title": title,
+            "overview": overview,
+            "parameters": parameters,
+            "returns": returns,
+            "component_name": component_name,
+            "example_code": example_code,
+            "formatted_metadata": self.formatted_feature_metadata,
+            "links": links,
         }

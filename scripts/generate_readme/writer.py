@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from .category_index_generator import CategoryIndexGenerator
 from .constants import CUSTOM_CONTENT_MARKER
 from .content_generator import ReadmeContentGenerator
 from .metadata_parser import MetadataParser
-from .category_index_generator import CategoryIndexGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,13 @@ logger = logging.getLogger(__name__)
 class ReadmeWriter:
     """Writes README documentation for Kubeflow Pipelines components and pipelines."""
 
-    def __init__(self, component_dir: Optional[Path] = None, pipeline_dir: Optional[Path] = None,
-                 output_file: Optional[Path] = None, overwrite: bool = False):
+    def __init__(
+        self,
+        component_dir: Optional[Path] = None,
+        pipeline_dir: Optional[Path] = None,
+        output_file: Optional[Path] = None,
+        overwrite: bool = False,
+    ):
         """Initialize the README writer.
 
         Args:
@@ -38,18 +43,18 @@ class ReadmeWriter:
         self.is_component = component_dir is not None
         if self.is_component:
             self.source_dir = component_dir
-            self.source_file = component_dir / 'component.py'
-            self.function_type = 'component'
+            self.source_file = component_dir / "component.py"
+            self.function_type = "component"
         else:
             self.source_dir = pipeline_dir
-            self.source_file = pipeline_dir / 'pipeline.py'
-            self.function_type = 'pipeline'
-        
+            self.source_file = pipeline_dir / "pipeline.py"
+            self.function_type = "pipeline"
+
         self.category_dir = self.source_dir.parent
-        self.category_index_file = self.category_dir / 'README.md'
+        self.category_index_file = self.category_dir / "README.md"
 
         self.parser = MetadataParser(self.source_file, self.function_type)
-        self.metadata_file = self.source_dir / 'metadata.yaml'
+        self.metadata_file = self.source_dir / "metadata.yaml"
         self.readme_file = output_file if output_file else self.source_dir / "README.md"
         self.overwrite = overwrite
 
@@ -63,7 +68,7 @@ class ReadmeWriter:
             return None
 
         try:
-            with open(self.readme_file, 'r', encoding='utf-8') as f:
+            with open(self.readme_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
             if CUSTOM_CONTENT_MARKER in content:
@@ -76,10 +81,10 @@ class ReadmeWriter:
         except Exception as e:
             logger.warning(f"Error reading existing README for custom content: {e}")
             return None
-    
+
     def _write_category_index(self, category_content: str) -> None:
         """Write the category-level README index.
-        
+
         Args:
             category_content: The generated category index content to write.
         """
@@ -90,15 +95,14 @@ class ReadmeWriter:
             logger.info(f"Category index does not exist yet at {self.category_index_file}, creating new file")
 
         try:
-            with open(self.category_index_file, 'w', encoding='utf-8') as f:
+            with open(self.category_index_file, "w", encoding="utf-8") as f:
                 f.write(category_content)
-            
+
             logger.info(f"Category index generated at {self.category_index_file}")
-            
+
         except Exception as e:
             logger.error(f"Could not write category index: {e}")
             sys.exit(1)
-
 
     def _write_readme_file(self, readme_content: str) -> None:
         """Write the README content to the README.md file.
@@ -129,7 +133,7 @@ class ReadmeWriter:
         self.readme_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Write README.md
-        with open(self.readme_file, 'w', encoding='utf-8') as f:
+        with open(self.readme_file, "w", encoding="utf-8") as f:
             logger.debug(f"Writing README.md to {self.readme_file}")
             logger.debug(f"README content: {readme_content}")
             f.write(readme_content)
@@ -171,9 +175,8 @@ class ReadmeWriter:
         logger.debug(f"Target decorated function name: {metadata.get('name', 'Unknown')}")
         logger.debug(f"Parameters: {len(metadata.get('parameters', {}))}")
         logger.debug(f"Has return type: {'Yes' if metadata.get('returns') else 'No'}")
-       
+
         # Write category index
         index_generator = CategoryIndexGenerator(self.category_dir, self.is_component)
         index_content = index_generator.generate()
         self._write_category_index(index_content)
-        
