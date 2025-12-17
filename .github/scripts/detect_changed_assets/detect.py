@@ -17,6 +17,7 @@ PIPELINE_PATTERN = re.compile(r"^pipelines/([^/]+)/([^/]+)/")
 @dataclass
 class DetectionResult:
     """Result of detecting changed components and pipelines."""
+
     components: list[str] = field(default_factory=list)
     pipelines: list[str] = field(default_factory=list)
     all_changed_files: list[str] = field(default_factory=list)
@@ -24,14 +25,17 @@ class DetectionResult:
 
     @property
     def has_changed_components(self) -> bool:
+        """Whether any components have changed."""
         return len(self.components) > 0
 
     @property
     def has_changed_pipelines(self) -> bool:
+        """Whether any pipelines have changed."""
         return len(self.pipelines) > 0
 
     @property
     def has_changes(self) -> bool:
+        """Whether any components or pipelines have changed."""
         return self.has_changed_components or self.has_changed_pipelines
 
 
@@ -78,12 +82,13 @@ class GitClient:
         if self.run(["fetch", "origin", f"{base_branch}:refs/remotes/origin/{base_branch}"], check=False) == "":
             self.run(["fetch", "--depth=100", "origin", base_branch], check=False)
 
-    def get_changed_files(self, base_ref: str, head_ref: str) -> list[str]:
+    def get_changed_files(self, base_ref: str, head_ref: str, skip_deleted_files: bool = False) -> list[str]:
         """Get the list of changed files between two refs.
 
         Args:
             base_ref: Base git reference to compare against.
             head_ref: Head git reference to compare.
+            skip_deleted_files: Whether to skip deleted files.
 
         Returns:
             List of changed file paths.
@@ -91,16 +96,31 @@ class GitClient:
         merge_base = self.run(["merge-base", base_ref, head_ref], check=False)
 
         try:
+            if skip_deleted_files:
+                # Use --diff-filter to exclude deleted files
+                diff_flag = "--diff-filter=d"  # 'd' means exclude deleted
+            else:
+                diff_flag = None
+
             if merge_base:
-                diff_output = self.run(["diff", "--name-only", merge_base, head_ref])
+                cmd = ["diff", "--name-only"]
+                if diff_flag:
+                    cmd.append(diff_flag)
+                cmd.extend([merge_base, head_ref])
+                diff_output = self.run(cmd)
             else:
                 # Try three-dot notation first, then two-dot
-                diff_output = self.run(["diff", "--name-only", f"{base_ref}...{head_ref}"])
+                cmd = ["diff", "--name-only"]
+                if diff_flag:
+                    cmd.append(diff_flag)
+                cmd.append(f"{base_ref}...{head_ref}")
+                diff_output = self.run(cmd)
         except subprocess.CalledProcessError as e:
             print(f"DEBUG: Error getting changed files: {e}")
             raise
 
-        return [f for f in diff_output.split("\n") if f]
+        changed_files = [f for f in diff_output.split("\n") if f]
+        return changed_files
 
 
 class ChangeDetector:
@@ -119,6 +139,7 @@ class ChangeDetector:
         base_ref: str,
         head_ref: str,
         filter_pattern: str = "",
+        skip_deleted_files: bool = False,
     ) -> DetectionResult:
         """Detect changed components and pipelines.
 
@@ -126,12 +147,13 @@ class ChangeDetector:
             base_ref: Base git reference to compare against.
             head_ref: Head git reference to compare.
             filter_pattern: Optional regex pattern to filter files.
+            skip_deleted_files: Whether to skip deleted files.
 
         Returns:
             DetectionResult with all detected changes.
         """
         self.git.fetch_branch(base_ref)
-        changed_files = self.git.get_changed_files(base_ref, head_ref)
+        changed_files = self.git.get_changed_files(base_ref, head_ref, skip_deleted_files)
         filtered_files = self._apply_filter(changed_files, filter_pattern)
         components, pipelines = self._parse_changed_files(filtered_files)
 
@@ -238,10 +260,12 @@ class OutputWriter:
         for component in self.result.components:
             lines.append(f"- {component}")
 
-        lines.extend([
-            "",
-            f"**Pipelines:** {len(self.result.pipelines)}",
-        ])
+        lines.extend(
+            [
+                "",
+                f"**Pipelines:** {len(self.result.pipelines)}",
+            ]
+        )
 
         for pipeline in self.result.pipelines:
             lines.append(f"- {pipeline}")
@@ -303,6 +327,11 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Regex pattern to filter changed files",
     )
+    parser.add_argument(
+        "--skip-deleted-files",
+        action="store_true",
+        help="Whether to skip deleted files",
+    )
     return parser.parse_args()
 
 
@@ -312,7 +341,7 @@ def main() -> int:
 
     # Run detection
     detector = ChangeDetector()
-    result = detector.detect(args.base_ref, args.head_ref, args.filter)
+    result = detector.detect(args.base_ref, args.head_ref, args.filter, args.skip_deleted_files)
 
     # Write outputs
     output = OutputWriter(result)
