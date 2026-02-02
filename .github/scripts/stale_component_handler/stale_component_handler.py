@@ -95,12 +95,11 @@ def create_issue_body(component: dict, repo_path: Path) -> str:
     )
 
 
-def create_removal_pr_body(component: dict, repo_path: Path) -> str:
+def create_removal_pr_body(component: dict, owners: list[str]) -> str:
     """Generate the PR body for component removal using Jinja2 template."""
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     template = env.get_template(REMOVAL_PR_BODY_TEMPLATE)
 
-    owners = get_owners(repo_path / component["path"])
     owners_mention = ", ".join(f"@{o}" for o in owners) if owners else "No owners found"
 
     return template.render(
@@ -261,8 +260,8 @@ def create_removal_pr(repo: str, component: dict, repo_path: Path, dry_run: bool
         # Push the branch
         subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], check=True, capture_output=True)
 
-        # Create the PR
-        body = create_removal_pr_body(component, repo_path)
+        # Create the PR (use owners read before component was removed)
+        body = create_removal_pr_body(component, owners)
         pr_cmd = [
             "gh", "pr", "create",
             "--repo", repo,
